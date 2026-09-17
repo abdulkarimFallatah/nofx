@@ -1,8 +1,10 @@
 package kernel
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"nofx/logger"
 	"nofx/market"
 	"nofx/mcp"
@@ -336,8 +338,8 @@ func extractDecisions(response string) ([]Decision, error) {
 		if err := validateJSONFormat(jsonContent); err != nil {
 			return nil, fmt.Errorf("JSON format validation failed: %w\nJSON content: %s\nFull response:\n%s", err, jsonContent, response)
 		}
-		var decisions []Decision
-		if err := json.Unmarshal([]byte(jsonContent), &decisions); err != nil {
+		decisions, err := decodeDecisionsStrict(jsonContent)
+		if err != nil {
 			return nil, fmt.Errorf("JSON parsing failed: %w\nJSON content: %s", err, jsonContent)
 		}
 		return decisions, nil
@@ -368,9 +370,33 @@ func extractDecisions(response string) ([]Decision, error) {
 		return nil, fmt.Errorf("JSON format validation failed: %w\nJSON content: %s\nFull response:\n%s", err, jsonContent, response)
 	}
 
-	var decisions []Decision
-	if err := json.Unmarshal([]byte(jsonContent), &decisions); err != nil {
+	decisions, err := decodeDecisionsStrict(jsonContent)
+	if err != nil {
 		return nil, fmt.Errorf("JSON parsing failed: %w\nJSON content: %s", err, jsonContent)
+	}
+
+	return decisions, nil
+}
+
+// decodeDecisionsStrict rejects fields that are not part of Decision and any
+// trailing JSON value. AI output is untrusted input, so silently accepting a
+// misspelled or invented field can turn a safety instruction into a no-op.
+func decodeDecisionsStrict(jsonContent string) ([]Decision, error) {
+	decoder := json.NewDecoder(bytes.NewBufferString(jsonContent))
+	decoder.DisallowUnknownFields()
+
+	var decisions []Decision
+	if err := decoder.Decode(&decisions); err != nil {
+		return nil, err
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		if err == nil {
+			return nil, fmt.Errorf("unexpected trailing JSON value")
+		}
+		return nil, fmt.Errorf("invalid trailing JSON: %w", err)
+	}
+	if len(decisions) == 0 {
+		return nil, fmt.Errorf("decision array cannot be empty")
 	}
 
 	return decisions, nil
