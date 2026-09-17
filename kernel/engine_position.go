@@ -2,8 +2,9 @@ package kernel
 
 import (
 	"fmt"
-	"nofx/logger"
+	"math"
 	"nofx/market"
+	"strings"
 )
 
 // ============================================================================
@@ -24,6 +25,31 @@ func validateDecision(d *Decision, accountEquity float64, btcEthLeverage, altcoi
 }
 
 func validateDecisionForMode(d *Decision, accountEquity float64, btcEthLeverage, altcoinLeverage int, btcEthPosRatio, altcoinPosRatio float64, signalManagedExit bool) error {
+	if d == nil {
+		return fmt.Errorf("decision cannot be nil")
+	}
+	if strings.TrimSpace(d.Symbol) == "" {
+		return fmt.Errorf("symbol cannot be empty")
+	}
+	if d.Symbol != strings.TrimSpace(d.Symbol) {
+		return fmt.Errorf("symbol cannot contain leading or trailing whitespace")
+	}
+	if len(d.Symbol) > 64 {
+		return fmt.Errorf("symbol is too long")
+	}
+	if strings.TrimSpace(d.Reasoning) == "" {
+		return fmt.Errorf("reasoning cannot be empty")
+	}
+	if d.Confidence < 0 || d.Confidence > 100 {
+		return fmt.Errorf("confidence must be between 0 and 100: %d", d.Confidence)
+	}
+	if err := validateFiniteDecisionNumbers(d); err != nil {
+		return err
+	}
+	if d.RiskUSD < 0 {
+		return fmt.Errorf("risk_usd cannot be negative: %.2f", d.RiskUSD)
+	}
+
 	validActions := map[string]bool{
 		"open_long":   true,
 		"open_short":  true,
@@ -38,6 +64,15 @@ func validateDecisionForMode(d *Decision, accountEquity float64, btcEthLeverage,
 	}
 
 	if d.Action == "open_long" || d.Action == "open_short" {
+		if !isFinitePositive(accountEquity) {
+			return fmt.Errorf("account equity must be a finite positive number")
+		}
+		if btcEthLeverage <= 0 || altcoinLeverage <= 0 {
+			return fmt.Errorf("configured leverage limits must be greater than 0")
+		}
+		if !isFinitePositive(btcEthPosRatio) || !isFinitePositive(altcoinPosRatio) {
+			return fmt.Errorf("configured position ratios must be finite positive numbers")
+		}
 		// Asset tiering for validation:
 		//   - BTC/ETH crypto perps use the BTC/ETH tier (typically 5x equity).
 		//   - Hyperliquid XYZ assets (US equities, commodities, forex) are
@@ -59,9 +94,7 @@ func validateDecisionForMode(d *Decision, accountEquity float64, btcEthLeverage,
 			return fmt.Errorf("leverage must be greater than 0: %d", d.Leverage)
 		}
 		if d.Leverage > maxLeverage {
-			logger.Infof("⚠️  [Leverage Fallback] %s leverage exceeded (%dx > %dx), auto-adjusting to limit %dx",
-				d.Symbol, d.Leverage, maxLeverage, maxLeverage)
-			d.Leverage = maxLeverage
+			return fmt.Errorf("leverage exceeds configured limit for %s: %dx > %dx", d.Symbol, d.Leverage, maxLeverage)
 		}
 		if d.PositionSizeUSD <= 0 {
 			return fmt.Errorf("position size must be greater than 0: %.2f", d.PositionSizeUSD)
@@ -143,4 +176,28 @@ func validateDecisionForMode(d *Decision, accountEquity float64, btcEthLeverage,
 	}
 
 	return nil
+}
+
+func validateFiniteDecisionNumbers(d *Decision) error {
+	values := []struct {
+		name  string
+		value float64
+	}{
+		{"position_size_usd", d.PositionSizeUSD},
+		{"stop_loss", d.StopLoss},
+		{"take_profit", d.TakeProfit},
+		{"price", d.Price},
+		{"quantity", d.Quantity},
+		{"risk_usd", d.RiskUSD},
+	}
+	for _, item := range values {
+		if math.IsNaN(item.value) || math.IsInf(item.value, 0) {
+			return fmt.Errorf("%s must be finite", item.name)
+		}
+	}
+	return nil
+}
+
+func isFinitePositive(value float64) bool {
+	return value > 0 && !math.IsNaN(value) && !math.IsInf(value, 0)
 }
