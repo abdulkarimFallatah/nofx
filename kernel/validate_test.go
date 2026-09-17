@@ -1,22 +1,24 @@
 package kernel
 
 import (
+	"math"
+	"strings"
 	"testing"
 )
 
-// TestLeverageFallback tests automatic correction when leverage exceeds limit
-func TestLeverageFallback(t *testing.T) {
+// TestLeverageValidation verifies that model output cannot be silently altered
+// into an executable decision. Invalid leverage must fail closed.
+func TestLeverageValidation(t *testing.T) {
 	tests := []struct {
 		name            string
 		decision        Decision
 		accountEquity   float64
 		btcEthLeverage  int
 		altcoinLeverage int
-		wantLeverage    int // Expected leverage after correction
 		wantError       bool
 	}{
 		{
-			name: "Altcoin leverage exceeded - auto-correct to limit",
+			name: "Altcoin leverage exceeded - reject",
 			decision: Decision{
 				Symbol:          "SOLUSDT",
 				Action:          "open_long",
@@ -24,15 +26,15 @@ func TestLeverageFallback(t *testing.T) {
 				PositionSizeUSD: 100,
 				StopLoss:        50,
 				TakeProfit:      200,
+				Reasoning:       "synthetic leverage-limit fixture",
 			},
 			accountEquity:   100,
 			btcEthLeverage:  10,
 			altcoinLeverage: 5, // Limit 5x
-			wantLeverage:    5, // Should be corrected to 5
-			wantError:       false,
+			wantError:       true,
 		},
 		{
-			name: "BTC leverage exceeded - auto-correct to limit",
+			name: "BTC leverage exceeded - reject",
 			decision: Decision{
 				Symbol:          "BTCUSDT",
 				Action:          "open_long",
@@ -40,12 +42,12 @@ func TestLeverageFallback(t *testing.T) {
 				PositionSizeUSD: 1000,
 				StopLoss:        90000,
 				TakeProfit:      110000,
+				Reasoning:       "synthetic leverage-limit fixture",
 			},
 			accountEquity:   100,
 			btcEthLeverage:  10, // Limit 10x
 			altcoinLeverage: 5,
-			wantLeverage:    10, // Should be corrected to 10
-			wantError:       false,
+			wantError:       true,
 		},
 		{
 			name: "Leverage within limit - no correction",
@@ -56,11 +58,11 @@ func TestLeverageFallback(t *testing.T) {
 				PositionSizeUSD: 500,
 				StopLoss:        4000,
 				TakeProfit:      3000,
+				Reasoning:       "synthetic valid fixture",
 			},
 			accountEquity:   100,
 			btcEthLeverage:  10,
 			altcoinLeverage: 5,
-			wantLeverage:    5, // Stays unchanged
 			wantError:       false,
 		},
 		{
@@ -72,11 +74,11 @@ func TestLeverageFallback(t *testing.T) {
 				PositionSizeUSD: 100,
 				StopLoss:        50,
 				TakeProfit:      200,
+				Reasoning:       "synthetic zero-leverage fixture",
 			},
 			accountEquity:   100,
 			btcEthLeverage:  10,
 			altcoinLeverage: 5,
-			wantLeverage:    0,
 			wantError:       true,
 		},
 	}
@@ -92,9 +94,67 @@ func TestLeverageFallback(t *testing.T) {
 				return
 			}
 
-			// If shouldn't error, check if leverage was correctly corrected
-			if !tt.wantError && tt.decision.Leverage != tt.wantLeverage {
-				t.Errorf("Leverage not corrected: got %d, want %d", tt.decision.Leverage, tt.wantLeverage)
+		})
+	}
+}
+
+func TestDecisionValidationRejectsUnsafeValues(t *testing.T) {
+	base := Decision{
+		Symbol:          "TEST",
+		Action:          "open_long",
+		Leverage:        1,
+		PositionSizeUSD: 20,
+		StopLoss:        80,
+		TakeProfit:      180,
+		Confidence:      80,
+		Reasoning:       "synthetic validation fixture",
+	}
+
+	tests := []struct {
+		name   string
+		mutate func(*Decision)
+		match  string
+	}{
+		{"NaN position size", func(d *Decision) { d.PositionSizeUSD = math.NaN() }, "must be finite"},
+		{"infinite stop", func(d *Decision) { d.StopLoss = math.Inf(1) }, "must be finite"},
+		{"empty symbol", func(d *Decision) { d.Symbol = " " }, "symbol cannot be empty"},
+		{"missing reasoning", func(d *Decision) { d.Reasoning = "" }, "reasoning cannot be empty"},
+		{"confidence above range", func(d *Decision) { d.Confidence = 101 }, "confidence"},
+		{"negative risk", func(d *Decision) { d.RiskUSD = -1 }, "risk_usd"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			decision := base
+			tt.mutate(&decision)
+			err := validateDecision(&decision, 100, 5, 5, 1, 1)
+			if err == nil || !strings.Contains(err.Error(), tt.match) {
+				t.Fatalf("expected error containing %q, got %v", tt.match, err)
+			}
+		})
+	}
+}
+
+func TestDecodeDecisionsStrict(t *testing.T) {
+	valid := `[{"symbol":"TEST","action":"wait","reasoning":"synthetic fixture"}]`
+	if _, err := decodeDecisionsStrict(valid); err != nil {
+		t.Fatalf("valid decision should decode: %v", err)
+	}
+
+	tests := []struct {
+		name  string
+		input string
+		match string
+	}{
+		{"unknown field", `[{"symbol":"TEST","action":"wait","reasoning":"fixture","leverge":5}]`, "unknown field"},
+		{"empty array", `[]`, "cannot be empty"},
+		{"trailing value", valid + ` {}`, "trailing"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := decodeDecisionsStrict(tt.input)
+			if err == nil || !strings.Contains(err.Error(), tt.match) {
+				t.Fatalf("expected error containing %q, got %v", tt.match, err)
 			}
 		})
 	}
@@ -108,6 +168,7 @@ func TestClaw402XyzAllowsFullTenXNotional(t *testing.T) {
 		PositionSizeUSD: 306.8,
 		StopLoss:        95,
 		TakeProfit:      120,
+		Reasoning:       "synthetic asset-tier fixture",
 	}
 
 	if err := validateDecision(&decision, 30.68, 10, 10, 10.0, 10.0); err != nil {
@@ -123,6 +184,7 @@ func TestSignalManagedDecisionAllowsZeroTakeProfitWithProtectiveStop(t *testing.
 		PositionSizeUSD: 300,
 		StopLoss:        95000,
 		TakeProfit:      0,
+		Reasoning:       "synthetic managed-exit fixture",
 	}
 
 	if err := validateDecisionForMode(&decision, 30, 10, 10, 10.0, 10.0, true); err != nil {
@@ -138,6 +200,7 @@ func TestSignalManagedDecisionStillRequiresProtectiveStop(t *testing.T) {
 		PositionSizeUSD: 300,
 		StopLoss:        0,
 		TakeProfit:      0,
+		Reasoning:       "synthetic missing-stop fixture",
 	}
 
 	if err := validateDecisionForMode(&decision, 30, 10, 10, 10.0, 10.0, true); err == nil {
@@ -153,6 +216,7 @@ func TestFixedExitDecisionStillRequiresTakeProfit(t *testing.T) {
 		PositionSizeUSD: 300,
 		StopLoss:        95000,
 		TakeProfit:      0,
+		Reasoning:       "synthetic missing-target fixture",
 	}
 
 	if err := validateDecision(&decision, 30, 10, 10, 10.0, 10.0); err == nil {
