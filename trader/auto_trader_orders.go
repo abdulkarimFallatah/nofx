@@ -120,6 +120,14 @@ func (at *AutoTrader) executeOpenLongWithRecord(decision *kernel.Decision, actio
 		decision.PositionSizeUSD = actualPositionSize
 	}
 
+	// V1 deterministic capital-preservation gate. It runs after legacy/autopilot
+	// sizing and immediately before quantity/order creation. CurrentPrice is
+	// exchange-specific market data and is never accepted from model output.
+	if err := at.applyV1OpeningRiskGate(decision, positions, equity, marketData.CurrentPrice); err != nil {
+		return err
+	}
+	actualPositionSize = decision.PositionSizeUSD
+
 	// [CODE ENFORCED] Minimum position size check
 	if err := at.enforceMinPositionSize(decision.PositionSizeUSD); err != nil {
 		return err
@@ -243,6 +251,14 @@ func (at *AutoTrader) executeOpenShortWithRecord(decision *kernel.Decision, acti
 		actualPositionSize = adjustedSize
 		decision.PositionSizeUSD = actualPositionSize
 	}
+
+	// V1 deterministic capital-preservation gate. It runs after legacy/autopilot
+	// sizing and immediately before quantity/order creation. CurrentPrice is
+	// exchange-specific market data and is never accepted from model output.
+	if err := at.applyV1OpeningRiskGate(decision, positions, equity, marketData.CurrentPrice); err != nil {
+		return err
+	}
+	actualPositionSize = decision.PositionSizeUSD
 
 	// [CODE ENFORCED] Minimum position size check
 	if err := at.enforceMinPositionSize(decision.PositionSizeUSD); err != nil {
