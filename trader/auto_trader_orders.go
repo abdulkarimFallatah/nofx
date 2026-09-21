@@ -25,6 +25,16 @@ const (
 
 // executeDecisionWithRecord executes AI decision and records detailed information
 func (at *AutoTrader) executeDecisionWithRecord(decision *kernel.Decision, actionRecord *store.DecisionAction) error {
+	if at.config.ShadowMode && (decision.Action == "close_long" || decision.Action == "close_short") {
+		logger.Infof("  👻 [SHADOW] %s %s | close proposal recorded, NO EXCHANGE MUTATION", decision.Action, decision.Symbol)
+		return nil
+	}
+	if at.config.ShadowMode && decision.Action == "hold" {
+		// A live hold can cancel take-profit orders for signal-managed exits.
+		// Shadow mode must be strictly observational.
+		logger.Infof("  👻 [SHADOW] hold %s | NO EXCHANGE MUTATION", decision.Symbol)
+		return nil
+	}
 	switch decision.Action {
 	case "open_long":
 		return at.executeOpenLongWithRecord(decision, actionRecord)
