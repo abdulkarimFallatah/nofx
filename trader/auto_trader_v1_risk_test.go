@@ -27,11 +27,17 @@ func TestV1GateSnapshotMathUsesNotionalAndMargin(t *testing.T) {
 	// documents the exchange-map representation the trader gate accepts.
 	pos := map[string]interface{}{"markPrice": 100.0, "positionAmt": -2.0, "leverage": 4.0}
 	mark, ok := finitePositiveMapFloat(pos, "markPrice")
-	if !ok { t.Fatal("mark price should parse") }
+	if !ok {
+		t.Fatal("mark price should parse")
+	}
 	qty, ok := finiteMapFloat(pos, "positionAmt")
-	if !ok { t.Fatal("quantity should parse") }
+	if !ok {
+		t.Fatal("quantity should parse")
+	}
 	lev, ok := finitePositiveMapFloat(pos, "leverage")
-	if !ok { t.Fatal("leverage should parse") }
+	if !ok {
+		t.Fatal("leverage should parse")
+	}
 	notional := math.Abs(qty) * mark
 	if notional != 200 || notional/lev != 50 {
 		t.Fatalf("unexpected exposure/margin: %.2f / %.2f", notional, notional/lev)
