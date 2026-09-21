@@ -51,6 +51,8 @@ jobs:
           if [ -n "$files" ]; then
             echo "V1 files requiring gofmt:"
             echo "$files"
+            echo "Canonical gofmt diff:"
+            gofmt -s -d $files || true
             exit 1
           fi
 
