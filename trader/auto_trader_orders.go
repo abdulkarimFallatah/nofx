@@ -138,6 +138,15 @@ func (at *AutoTrader) executeOpenLongWithRecord(decision *kernel.Decision, actio
 	actionRecord.Quantity = quantity
 	actionRecord.Price = marketData.CurrentPrice
 
+	if at.config.ShadowMode {
+		actionRecord.Quantity = quantity
+		actionRecord.Price = marketData.CurrentPrice
+		logger.Infof("  👻 [SHADOW] %s %s | notional=%.2f leverage=%dx qty=%.8f entry=%.8f stop=%.8f take_profit=%.8f | NO EXCHANGE MUTATION",
+			decision.Action, decision.Symbol, decision.PositionSizeUSD, decision.Leverage, quantity,
+			marketData.CurrentPrice, decision.StopLoss, decision.TakeProfit)
+		return nil
+	}
+
 	// Set margin mode
 	if err := at.trader.SetMarginMode(decision.Symbol, at.config.IsCrossMargin); err != nil {
 		logger.Infof("  ⚠️ Failed to set margin mode: %v", err)
@@ -269,6 +278,15 @@ func (at *AutoTrader) executeOpenShortWithRecord(decision *kernel.Decision, acti
 	quantity := actualPositionSize / marketData.CurrentPrice
 	actionRecord.Quantity = quantity
 	actionRecord.Price = marketData.CurrentPrice
+
+	if at.config.ShadowMode {
+		actionRecord.Quantity = quantity
+		actionRecord.Price = marketData.CurrentPrice
+		logger.Infof("  👻 [SHADOW] %s %s | notional=%.2f leverage=%dx qty=%.8f entry=%.8f stop=%.8f take_profit=%.8f | NO EXCHANGE MUTATION",
+			decision.Action, decision.Symbol, decision.PositionSizeUSD, decision.Leverage, quantity,
+			marketData.CurrentPrice, decision.StopLoss, decision.TakeProfit)
+		return nil
+	}
 
 	// Set margin mode
 	if err := at.trader.SetMarginMode(decision.Symbol, at.config.IsCrossMargin); err != nil {
