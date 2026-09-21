@@ -45,7 +45,7 @@ func ConservativeRiskEngineConfig() RiskEngineConfig {
 // DailyPnL is negative when the account has lost money today.
 // DrawdownRatio is positive (0.05 means 5% below the tracked equity peak).
 type RiskSnapshot struct {
-	Equity              float64
+	Equity               float64
 	DailyPnL             float64
 	DrawdownRatio        float64
 	CurrentPortfolioRisk float64
