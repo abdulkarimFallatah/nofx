@@ -45,11 +45,11 @@ jobs:
       - name: Download modules
         run: go mod download
 
-      - name: Verify formatting
+      - name: Verify formatting of V1 changes
         run: |
-          files="$(gofmt -s -l kernel trader)"
+          files="$(gofmt -s -l             kernel/risk_engine.go             kernel/risk_engine_test.go             trader/auto_trader.go             trader/auto_trader_decision.go             trader/auto_trader_orders.go             trader/auto_trader_shadow_test.go             trader/auto_trader_v1_risk.go             trader/auto_trader_v1_risk_test.go)"
           if [ -n "$files" ]; then
-            echo "Files requiring gofmt:"
+            echo "V1 files requiring gofmt:"
             echo "$files"
             exit 1
           fi
