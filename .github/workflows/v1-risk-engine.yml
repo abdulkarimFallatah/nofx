@@ -1,0 +1,67 @@
+name: V1 Risk Engine Gate
+
+on:
+  pull_request:
+    branches:
+      - security/strict-decision-validation
+    paths:
+      - 'kernel/**'
+      - 'trader/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/v1-risk-engine.yml'
+  push:
+    branches:
+      - feature/risk-engine-v1
+    paths:
+      - 'kernel/**'
+      - 'trader/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/v1-risk-engine.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  risk-engine:
+    name: Go build, vet, tests and race detector
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATA_ENCRYPTION_KEY: test-encryption-key-for-ci-only-not-production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Verify formatting
+        run: |
+          files="$(gofmt -s -l kernel trader)"
+          if [ -n "$files" ]; then
+            echo "Files requiring gofmt:"
+            echo "$files"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Unit tests
+        run: go test ./...
+
+      - name: Race detector
+        run: go test -race ./...
