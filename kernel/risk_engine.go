@@ -18,13 +18,13 @@ const (
 // RiskEngineConfig contains portfolio rules that the AI cannot override.
 // Ratios are expressed as fractions of equity (0.01 = 1%).
 type RiskEngineConfig struct {
-	MaxRiskPerTradeRatio    float64
-	MaxPortfolioRiskRatio   float64
-	MaxGrossExposureRatio   float64
-	MaxMarginUsageRatio     float64
-	MaxDailyLossRatio       float64
-	MaxDrawdownRatio        float64
-	MinStopDistanceRatio    float64
+	MaxRiskPerTradeRatio  float64
+	MaxPortfolioRiskRatio float64
+	MaxGrossExposureRatio float64
+	MaxMarginUsageRatio   float64
+	MaxDailyLossRatio     float64
+	MaxDrawdownRatio      float64
+	MinStopDistanceRatio  float64
 }
 
 // ConservativeRiskEngineConfig is intentionally defensive for V1.
@@ -55,8 +55,8 @@ type RiskSnapshot struct {
 
 // RiskAssessment records why a proposal passed, was resized, or was rejected.
 type RiskAssessment struct {
-	Verdict             RiskVerdict
-	Reason              string
+	Verdict              RiskVerdict
+	Reason               string
 	RequestedPositionUSD float64
 	ApprovedPositionUSD  float64
 	EstimatedRiskUSD     float64
