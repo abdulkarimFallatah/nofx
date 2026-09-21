@@ -22,8 +22,12 @@ func (at *AutoTrader) applyV1OpeningRiskGate(decision *kernel.Decision, position
 	snapshot := kernel.RiskSnapshot{
 		Equity:           equity,
 		DailyPnL:         at.dailyPnL,
-		DrawdownRatio:    currentAccountDrawdownRatio(equity, at.initialBalance),
+		DrawdownRatio:    0, // populated below only when the baseline is trustworthy
 		CurrentMarginUsed: 0,
+	}
+
+	if at.initialBalance > 0 {
+		snapshot.DrawdownRatio = currentAccountDrawdownRatio(equity, at.initialBalance)
 	}
 
 	for _, pos := range positions {
