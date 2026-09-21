@@ -156,8 +156,15 @@ func validateRiskInputs(cfg RiskEngineConfig, s RiskSnapshot, d Decision, entryP
 		math.IsNaN(s.DailyPnL) || math.IsInf(s.DailyPnL, 0) {
 		return fmt.Errorf("risk snapshot contains invalid values")
 	}
-	vals := []float64{cfg.MaxRiskPerTradeRatio, cfg.MaxPortfolioRiskRatio, cfg.MaxGrossExposureRatio,
-		cfg.MaxMarginUsageRatio, cfg.MaxDailyLossRatio, cfg.MaxDrawdownRatio, cfg.MinStopDistanceRatio}
+	vals := []float64{
+		cfg.MaxRiskPerTradeRatio,
+		cfg.MaxPortfolioRiskRatio,
+		cfg.MaxGrossExposureRatio,
+		cfg.MaxMarginUsageRatio,
+		cfg.MaxDailyLossRatio,
+		cfg.MaxDrawdownRatio,
+		cfg.MinStopDistanceRatio,
+	}
 	for _, v := range vals {
 		if !finitePositive(v) {
 			return fmt.Errorf("risk configuration must contain finite positive limits")
