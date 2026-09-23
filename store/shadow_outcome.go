@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"gorm.io/gorm"
 )
 
 // ShadowOutcome records a point-in-time mark-to-market result for a shadow
