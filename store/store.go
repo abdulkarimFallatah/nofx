@@ -23,6 +23,7 @@ type Store struct {
 	exchange       *ExchangeStore
 	trader         *TraderStore
 	decision       *DecisionStore
+	shadowJournal  *ShadowJournalStore
 	position       *PositionStore
 	strategy       *StrategyStore
 	equity         *EquityStore
@@ -143,6 +144,12 @@ func (s *Store) initTables() error {
 	if err := s.Decision().initTables(); err != nil {
 		return fmt.Errorf("failed to initialize decision log tables: %w", err)
 	}
+	if err := s.ShadowJournal().initTables(); err != nil {
+		return fmt.Errorf("failed to initialize shadow journal table: %w", err)
+	}
+	if err := s.ShadowJournal().initOutcomeTables(); err != nil {
+		return fmt.Errorf("failed to initialize shadow outcome table: %w", err)
+	}
 	if err := s.Position().InitTables(); err != nil {
 		return fmt.Errorf("failed to initialize position tables: %w", err)
 	}
@@ -235,6 +242,16 @@ func (s *Store) Decision() *DecisionStore {
 		s.decision = NewDecisionStore(s.gdb)
 	}
 	return s.decision
+}
+
+// ShadowJournal gets append-only shadow-mode research storage.
+func (s *Store) ShadowJournal() *ShadowJournalStore {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.shadowJournal == nil {
+		s.shadowJournal = NewShadowJournalStore(s.gdb)
+	}
+	return s.shadowJournal
 }
 
 // Position gets position storage

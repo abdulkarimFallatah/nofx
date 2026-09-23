@@ -1,0 +1,77 @@
+name: V1 Risk Engine Gate
+
+on:
+  pull_request:
+    branches:
+      - security/strict-decision-validation
+    paths:
+      - 'kernel/**'
+      - 'trader/**'
+      - 'store/shadow_journal.go'
+      - 'store/shadow_journal_test.go'
+      - 'store/shadow_outcome.go'
+      - 'store/shadow_outcome_test.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/v1-risk-engine.yml'
+  push:
+    branches:
+      - feature/risk-engine-v1
+    paths:
+      - 'kernel/**'
+      - 'trader/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/v1-risk-engine.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  risk-engine:
+    name: Go build, vet, tests and race detector
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATA_ENCRYPTION_KEY: test-encryption-key-for-ci-only-not-production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Verify formatting of V1 changes
+        run: |
+          files="$(gofmt -s -l             kernel/risk_engine.go             kernel/risk_engine_test.go             trader/auto_trader.go             trader/auto_trader_decision.go             trader/auto_trader_orders.go             trader/auto_trader_shadow_test.go             trader/auto_trader_v1_risk.go             trader/auto_trader_v1_risk_test.go \
+            store/shadow_journal.go \
+            store/shadow_journal_test.go \
+            store/shadow_outcome.go \
+            store/shadow_outcome_test.go)"
+          if [ -n "$files" ]; then
+            echo "V1 files requiring gofmt:"
+            echo "$files"
+            echo "Canonical gofmt diff:"
+            gofmt -s -d $files || true
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Unit tests
+        run: go test ./...
+
+      - name: Race detector
+        run: go test -race ./...

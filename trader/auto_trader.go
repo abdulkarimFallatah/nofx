@@ -158,6 +158,10 @@ type AutoTraderConfig struct {
 	// Competition visibility
 	ShowInCompetition bool // Whether to show in competition page
 
+	// ShadowMode evaluates live AI decisions and deterministic risk controls but
+	// never mutates exchange state (no orders, margin-mode changes, SL or TP).
+	ShadowMode bool
+
 	// Strategy configuration (use complete strategy config)
 	StrategyConfig    *store.StrategyConfig // Strategy configuration (includes coin sources, indicators, risk control, prompts, etc.)
 	StrategyConfigRaw string                // Raw strategy config JSON from DB, used to detect live edits

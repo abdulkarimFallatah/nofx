@@ -25,6 +25,16 @@ const (
 
 // executeDecisionWithRecord executes AI decision and records detailed information
 func (at *AutoTrader) executeDecisionWithRecord(decision *kernel.Decision, actionRecord *store.DecisionAction) error {
+	if at.config.ShadowMode && (decision.Action == "close_long" || decision.Action == "close_short") {
+		logger.Infof("  👻 [SHADOW] %s %s | close proposal recorded, NO EXCHANGE MUTATION", decision.Action, decision.Symbol)
+		return nil
+	}
+	if at.config.ShadowMode && decision.Action == "hold" {
+		// A live hold can cancel take-profit orders for signal-managed exits.
+		// Shadow mode must be strictly observational.
+		logger.Infof("  👻 [SHADOW] hold %s | NO EXCHANGE MUTATION", decision.Symbol)
+		return nil
+	}
 	switch decision.Action {
 	case "open_long":
 		return at.executeOpenLongWithRecord(decision, actionRecord)
@@ -120,6 +130,14 @@ func (at *AutoTrader) executeOpenLongWithRecord(decision *kernel.Decision, actio
 		decision.PositionSizeUSD = actualPositionSize
 	}
 
+	// V1 deterministic capital-preservation gate. It runs after legacy/autopilot
+	// sizing and immediately before quantity/order creation. CurrentPrice is
+	// exchange-specific market data and is never accepted from model output.
+	if err := at.applyV1OpeningRiskGate(decision, positions, equity, marketData.CurrentPrice); err != nil {
+		return err
+	}
+	actualPositionSize = decision.PositionSizeUSD
+
 	// [CODE ENFORCED] Minimum position size check
 	if err := at.enforceMinPositionSize(decision.PositionSizeUSD); err != nil {
 		return err
@@ -129,6 +147,15 @@ func (at *AutoTrader) executeOpenLongWithRecord(decision *kernel.Decision, actio
 	quantity := actualPositionSize / marketData.CurrentPrice
 	actionRecord.Quantity = quantity
 	actionRecord.Price = marketData.CurrentPrice
+
+	if at.config.ShadowMode {
+		actionRecord.Quantity = quantity
+		actionRecord.Price = marketData.CurrentPrice
+		logger.Infof("  👻 [SHADOW] %s %s | notional=%.2f leverage=%dx qty=%.8f entry=%.8f stop=%.8f take_profit=%.8f | NO EXCHANGE MUTATION",
+			decision.Action, decision.Symbol, decision.PositionSizeUSD, decision.Leverage, quantity,
+			marketData.CurrentPrice, decision.StopLoss, decision.TakeProfit)
+		return nil
+	}
 
 	// Set margin mode
 	if err := at.trader.SetMarginMode(decision.Symbol, at.config.IsCrossMargin); err != nil {
@@ -244,6 +271,14 @@ func (at *AutoTrader) executeOpenShortWithRecord(decision *kernel.Decision, acti
 		decision.PositionSizeUSD = actualPositionSize
 	}
 
+	// V1 deterministic capital-preservation gate. It runs after legacy/autopilot
+	// sizing and immediately before quantity/order creation. CurrentPrice is
+	// exchange-specific market data and is never accepted from model output.
+	if err := at.applyV1OpeningRiskGate(decision, positions, equity, marketData.CurrentPrice); err != nil {
+		return err
+	}
+	actualPositionSize = decision.PositionSizeUSD
+
 	// [CODE ENFORCED] Minimum position size check
 	if err := at.enforceMinPositionSize(decision.PositionSizeUSD); err != nil {
 		return err
@@ -253,6 +288,15 @@ func (at *AutoTrader) executeOpenShortWithRecord(decision *kernel.Decision, acti
 	quantity := actualPositionSize / marketData.CurrentPrice
 	actionRecord.Quantity = quantity
 	actionRecord.Price = marketData.CurrentPrice
+
+	if at.config.ShadowMode {
+		actionRecord.Quantity = quantity
+		actionRecord.Price = marketData.CurrentPrice
+		logger.Infof("  👻 [SHADOW] %s %s | notional=%.2f leverage=%dx qty=%.8f entry=%.8f stop=%.8f take_profit=%.8f | NO EXCHANGE MUTATION",
+			decision.Action, decision.Symbol, decision.PositionSizeUSD, decision.Leverage, quantity,
+			marketData.CurrentPrice, decision.StopLoss, decision.TakeProfit)
+		return nil
+	}
 
 	// Set margin mode
 	if err := at.trader.SetMarginMode(decision.Symbol, at.config.IsCrossMargin); err != nil {
