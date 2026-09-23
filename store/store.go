@@ -147,6 +147,9 @@ func (s *Store) initTables() error {
 	if err := s.ShadowJournal().initTables(); err != nil {
 		return fmt.Errorf("failed to initialize shadow journal table: %w", err)
 	}
+	if err := s.ShadowJournal().initOutcomeTables(); err != nil {
+		return fmt.Errorf("failed to initialize shadow outcome table: %w", err)
+	}
 	if err := s.Position().InitTables(); err != nil {
 		return fmt.Errorf("failed to initialize position tables: %w", err)
 	}
