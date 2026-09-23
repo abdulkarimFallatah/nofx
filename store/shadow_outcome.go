@@ -12,17 +12,17 @@ import (
 // ShadowOutcome records a point-in-time mark-to-market result for a shadow
 // proposal. It never represents an exchange fill or a real order.
 type ShadowOutcome struct {
-	ID                  int64     `gorm:"primaryKey;autoIncrement" json:"id"`
-	JournalID           int64     `gorm:"not null;index:idx_shadow_outcome_journal_time" json:"journal_id"`
-	TraderID            string    `gorm:"not null;index" json:"trader_id"`
-	Symbol              string    `gorm:"not null;index" json:"symbol"`
-	Timestamp           time.Time `gorm:"not null;index:idx_shadow_outcome_journal_time,sort:desc" json:"timestamp"`
-	ObservedPrice       float64   `gorm:"not null" json:"observed_price"`
-	PriceReturnRatio    float64   `gorm:"not null" json:"price_return_ratio"`
-	RequestedPnLUSD     float64   `gorm:"not null" json:"requested_pnl_usd"`
-	ApprovedPnLUSD      float64   `gorm:"not null" json:"approved_pnl_usd"`
-	RiskDeltaPnLUSD     float64   `gorm:"not null" json:"risk_delta_pnl_usd"`
-	CreatedAt           time.Time `json:"created_at"`
+	ID               int64     `gorm:"primaryKey;autoIncrement" json:"id"`
+	JournalID        int64     `gorm:"not null;index:idx_shadow_outcome_journal_time" json:"journal_id"`
+	TraderID         string    `gorm:"not null;index" json:"trader_id"`
+	Symbol           string    `gorm:"not null;index" json:"symbol"`
+	Timestamp        time.Time `gorm:"not null;index:idx_shadow_outcome_journal_time,sort:desc" json:"timestamp"`
+	ObservedPrice    float64   `gorm:"not null" json:"observed_price"`
+	PriceReturnRatio float64   `gorm:"not null" json:"price_return_ratio"`
+	RequestedPnLUSD  float64   `gorm:"not null" json:"requested_pnl_usd"`
+	ApprovedPnLUSD   float64   `gorm:"not null" json:"approved_pnl_usd"`
+	RiskDeltaPnLUSD  float64   `gorm:"not null" json:"risk_delta_pnl_usd"`
+	CreatedAt        time.Time `json:"created_at"`
 }
 
 func (ShadowOutcome) TableName() string { return "shadow_outcomes" }
@@ -53,7 +53,7 @@ func (s *ShadowJournalStore) RecordOutcome(entry ShadowJournalEntry, observedPri
 		return nil, fmt.Errorf("unsupported shadow action %q", entry.Action)
 	}
 
-	priceReturn := direction * (observedPrice-entry.MarketPrice) / entry.MarketPrice
+	priceReturn := direction * (observedPrice - entry.MarketPrice) / entry.MarketPrice
 	if observedAt.IsZero() {
 		observedAt = time.Now().UTC()
 	} else {
@@ -63,7 +63,7 @@ func (s *ShadowJournalStore) RecordOutcome(entry ShadowJournalEntry, observedPri
 		JournalID: entry.ID, TraderID: entry.TraderID, Symbol: entry.Symbol, Timestamp: observedAt,
 		ObservedPrice: observedPrice, PriceReturnRatio: priceReturn,
 		RequestedPnLUSD: entry.RequestedPositionUSD * priceReturn,
-		ApprovedPnLUSD: entry.ApprovedPositionUSD * priceReturn,
+		ApprovedPnLUSD:  entry.ApprovedPositionUSD * priceReturn,
 	}
 	outcome.RiskDeltaPnLUSD = outcome.ApprovedPnLUSD - outcome.RequestedPnLUSD
 
