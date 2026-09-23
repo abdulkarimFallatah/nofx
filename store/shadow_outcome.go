@@ -5,7 +5,6 @@ import (
 	"math"
 	"strings"
 	"time"
-
 )
 
 // ShadowOutcome records a point-in-time mark-to-market result for a shadow
