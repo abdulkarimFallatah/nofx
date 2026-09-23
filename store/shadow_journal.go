@@ -10,25 +10,25 @@ import (
 // ShadowJournalEntry is an immutable observation of what the AI proposed and
 // what the deterministic V1 risk engine allowed. It is research data only.
 type ShadowJournalEntry struct {
-	ID                  int64     `gorm:"primaryKey;autoIncrement" json:"id"`
-	TraderID            string    `gorm:"column:trader_id;not null;index:idx_shadow_trader_time" json:"trader_id"`
-	CycleNumber         int       `gorm:"column:cycle_number;not null" json:"cycle_number"`
-	Timestamp           time.Time `gorm:"not null;index:idx_shadow_trader_time,sort:desc" json:"timestamp"`
-	Symbol              string    `gorm:"not null;index" json:"symbol"`
-	Action              string    `gorm:"not null" json:"action"`
-	MarketPrice         float64   `gorm:"not null" json:"market_price"`
-	Equity              float64   `gorm:"not null" json:"equity"`
+	ID                   int64     `gorm:"primaryKey;autoIncrement" json:"id"`
+	TraderID             string    `gorm:"column:trader_id;not null;index:idx_shadow_trader_time" json:"trader_id"`
+	CycleNumber          int       `gorm:"column:cycle_number;not null" json:"cycle_number"`
+	Timestamp            time.Time `gorm:"not null;index:idx_shadow_trader_time,sort:desc" json:"timestamp"`
+	Symbol               string    `gorm:"not null;index" json:"symbol"`
+	Action               string    `gorm:"not null" json:"action"`
+	MarketPrice          float64   `gorm:"not null" json:"market_price"`
+	Equity               float64   `gorm:"not null" json:"equity"`
 	RequestedPositionUSD float64  `gorm:"not null" json:"requested_position_usd"`
-	ApprovedPositionUSD float64   `gorm:"not null" json:"approved_position_usd"`
-	Leverage            int       `gorm:"not null" json:"leverage"`
-	StopLoss            float64   `json:"stop_loss"`
-	TakeProfit          float64   `json:"take_profit"`
-	Confidence          int       `json:"confidence"`
-	RiskVerdict         string    `gorm:"not null" json:"risk_verdict"`
-	RiskReason          string    `gorm:"not null" json:"risk_reason"`
-	EstimatedRiskUSD    float64   `gorm:"not null" json:"estimated_risk_usd"`
-	MaxTradeRiskUSD     float64   `gorm:"not null" json:"max_trade_risk_usd"`
-	CreatedAt           time.Time `json:"created_at"`
+	ApprovedPositionUSD  float64   `gorm:"not null" json:"approved_position_usd"`
+	Leverage             int       `gorm:"not null" json:"leverage"`
+	StopLoss             float64   `json:"stop_loss"`
+	TakeProfit           float64   `json:"take_profit"`
+	Confidence           int       `json:"confidence"`
+	RiskVerdict          string    `gorm:"not null" json:"risk_verdict"`
+	RiskReason           string    `gorm:"not null" json:"risk_reason"`
+	EstimatedRiskUSD     float64   `gorm:"not null" json:"estimated_risk_usd"`
+	MaxTradeRiskUSD      float64   `gorm:"not null" json:"max_trade_risk_usd"`
+	CreatedAt            time.Time `json:"created_at"`
 }
 
 func (ShadowJournalEntry) TableName() string { return "shadow_journal" }
