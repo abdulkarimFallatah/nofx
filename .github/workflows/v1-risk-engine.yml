@@ -7,6 +7,8 @@ on:
     paths:
       - 'kernel/**'
       - 'trader/**'
+      - 'store/shadow_journal.go'
+      - 'store/shadow_journal_test.go'
       - 'go.mod'
       - 'go.sum'
       - '.github/workflows/v1-risk-engine.yml'
@@ -47,7 +49,9 @@ jobs:
 
       - name: Verify formatting of V1 changes
         run: |
-          files="$(gofmt -s -l             kernel/risk_engine.go             kernel/risk_engine_test.go             trader/auto_trader.go             trader/auto_trader_decision.go             trader/auto_trader_orders.go             trader/auto_trader_shadow_test.go             trader/auto_trader_v1_risk.go             trader/auto_trader_v1_risk_test.go)"
+          files="$(gofmt -s -l             kernel/risk_engine.go             kernel/risk_engine_test.go             trader/auto_trader.go             trader/auto_trader_decision.go             trader/auto_trader_orders.go             trader/auto_trader_shadow_test.go             trader/auto_trader_v1_risk.go             trader/auto_trader_v1_risk_test.go \
+            store/shadow_journal.go \
+            store/shadow_journal_test.go)"
           if [ -n "$files" ]; then
             echo "V1 files requiring gofmt:"
             echo "$files"
