@@ -18,7 +18,7 @@ type ShadowJournalEntry struct {
 	Action               string    `gorm:"not null" json:"action"`
 	MarketPrice          float64   `gorm:"not null" json:"market_price"`
 	Equity               float64   `gorm:"not null" json:"equity"`
-	RequestedPositionUSD float64  `gorm:"not null" json:"requested_position_usd"`
+	RequestedPositionUSD float64   `gorm:"not null" json:"requested_position_usd"`
 	ApprovedPositionUSD  float64   `gorm:"not null" json:"approved_position_usd"`
 	Leverage             int       `gorm:"not null" json:"leverage"`
 	StopLoss             float64   `json:"stop_loss"`
