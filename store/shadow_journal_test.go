@@ -49,7 +49,9 @@ func TestShadowJournalRejectsIncompleteEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := NewShadowJournalStore(db)
-	if err := s.initTables(); err != nil { t.Fatal(err) }
+	if err := s.initTables(); err != nil {
+		t.Fatal(err)
+	}
 	if err := s.Append(&ShadowJournalEntry{}); err == nil {
 		t.Fatal("expected incomplete shadow entry to fail")
 	}
