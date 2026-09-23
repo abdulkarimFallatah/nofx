@@ -62,6 +62,21 @@ func (s *ShadowJournalStore) Append(entry *ShadowJournalEntry) error {
 	return nil
 }
 
+func (s *ShadowJournalStore) ActiveOpenings(traderID string, limit int) ([]ShadowJournalEntry, error) {
+	if traderID == "" {
+		return nil, fmt.Errorf("trader id cannot be empty")
+	}
+	if limit <= 0 || limit > 1000 {
+		limit = 100
+	}
+	var entries []ShadowJournalEntry
+	if err := s.db.Where("trader_id = ? AND action IN ? AND approved_position_usd > 0", traderID, []string{"open_long", "open_short"}).
+		Order("timestamp DESC").Limit(limit).Find(&entries).Error; err != nil {
+		return nil, fmt.Errorf("failed to query active shadow openings: %w", err)
+	}
+	return entries, nil
+}
+
 func (s *ShadowJournalStore) Latest(traderID string, limit int) ([]ShadowJournalEntry, error) {
 	if limit <= 0 || limit > 1000 {
 		limit = 100
