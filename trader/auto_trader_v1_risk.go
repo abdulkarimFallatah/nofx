@@ -5,6 +5,7 @@ import (
 	"math"
 	"nofx/kernel"
 	"nofx/logger"
+	"nofx/store"
 )
 
 // applyV1OpeningRiskGate builds a risk snapshot from exchange/account state and
@@ -58,7 +59,23 @@ func (at *AutoTrader) applyV1OpeningRiskGate(decision *kernel.Decision, position
 		snapshot.CurrentPortfolioRisk += equity * kernel.ConservativeRiskEngineConfig().MaxRiskPerTradeRatio
 	}
 
+	requestedPositionUSD := decision.PositionSizeUSD
 	assessment := kernel.EvaluateOpeningRisk(kernel.ConservativeRiskEngineConfig(), snapshot, *decision, trustedEntryPrice)
+	if at.config.ShadowMode && at.store != nil {
+		entry := &store.ShadowJournalEntry{
+			TraderID: at.id, CycleNumber: at.cycleNumber, Symbol: decision.Symbol, Action: decision.Action,
+			MarketPrice: trustedEntryPrice, Equity: equity, RequestedPositionUSD: requestedPositionUSD,
+			ApprovedPositionUSD: assessment.ApprovedPositionUSD, Leverage: decision.Leverage,
+			StopLoss: decision.StopLoss, TakeProfit: decision.TakeProfit, Confidence: decision.Confidence,
+			RiskVerdict: string(assessment.Verdict), RiskReason: assessment.Reason,
+			EstimatedRiskUSD: assessment.EstimatedRiskUSD, MaxTradeRiskUSD: assessment.MaxTradeRiskUSD,
+		}
+		if err := at.store.ShadowJournal().Append(entry); err != nil {
+			// Research evidence must not silently disappear. Fail closed in shadow
+			// mode so an unjournaled decision is never mistaken for a valid sample.
+			return fmt.Errorf("V1 shadow journal: %w", err)
+		}
+	}
 	switch assessment.Verdict {
 	case kernel.RiskPass:
 		logger.Infof("  🛡️ [V1 RISK] PASS %s: risk %.2f / %.2f USDT", decision.Symbol, assessment.EstimatedRiskUSD, assessment.MaxTradeRiskUSD)
